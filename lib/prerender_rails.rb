@@ -96,7 +96,13 @@ module Rack
           return cached_response.finish
         end
 
-        prerendered_response = get_prerendered_page_response(env)
+        use_second_service = false
+
+        if env['HTTP_USER_AGENT'] != 'slackbot'
+          use_second_service = true
+        end
+
+        prerendered_response = get_prerendered_page_response(env,use_second_service)
 
         if prerendered_response
           response = build_rack_response_from_prerender(prerendered_response)
@@ -155,9 +161,9 @@ module Rack
     end
 
 
-    def get_prerendered_page_response(env)
+    def get_prerendered_page_response(env, use_second_service)
       begin
-        url = URI.parse(build_api_url(env))
+        url = URI.parse(build_api_url(env, use_second_service))
         headers = {
           'User-Agent' => env['HTTP_USER_AGENT'],
           'Accept-Encoding' => 'gzip'
@@ -181,7 +187,7 @@ module Rack
     end
 
 
-    def build_api_url(env)
+    def build_api_url(env, use_second_service = false)
       new_env = env
       if env["CF-VISITOR"]
         match = /"scheme":"(http|https)"/.match(env['CF-VISITOR'])
@@ -200,14 +206,18 @@ module Rack
       end
 
       url = Rack::Request.new(new_env).url
-      prerender_url = get_prerender_service_url()
+      prerender_url = get_prerender_service_url(use_second_service)
       forward_slash = prerender_url[-1, 1] == '/' ? '' : '/'
       "#{prerender_url}#{forward_slash}#{url}"
     end
 
 
-    def get_prerender_service_url
-      @options[:prerender_service_url] || ENV['PRERENDER_SERVICE_URL'] || 'http://service.prerender.io/'
+    def get_prerender_service_url use_second_service
+      if use_second_service
+        @options[:prerender_service_second_url] || ENV['PRERENDER_SERVICE_URL'] || 'http://service.prerender.io/'
+      else
+        @options[:prerender_service_url] || ENV['PRERENDER_SERVICE_URL'] || 'http://service.prerender.io/'
+      end
     end
 
 
