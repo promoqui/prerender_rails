@@ -222,7 +222,11 @@ module Rack
 
 
     def build_rack_response_from_prerender(prerendered_response)
-      response = Rack::Response.new(prerendered_response.body, prerendered_response.code, prerendered_response.header)
+      header = prerendered_response.header
+
+      header['Content-Length'] = prerendered_response.body.length
+
+      response = Rack::Response.new(prerendered_response.body, prerendered_response.code, header)
 
       @options[:build_rack_response_from_prerender].call(response, prerendered_response) if @options[:build_rack_response_from_prerender]
 
